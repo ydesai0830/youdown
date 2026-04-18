@@ -1,39 +1,69 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
-model Trip {
-  id          String        @id @default(cuid())
-  title       String
-  destination String?
-  startDate   DateTime?
-  endDate     DateTime?
-  notes       String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  reservations Reservation[]
+model Group {
+  id         String        @id @default(cuid())
+  name       String
+  inviteCode String        @unique
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  members    GroupMember[]
+  hangouts   Hangout[]
 }
 
-model Reservation {
-  id                 String          @id @default(cuid())
-  tripId             String
-  type               String
-  title              String
-  provider           String?
-  confirmationNumber String?
-  startAt            DateTime?
-  endAt              DateTime?
-  location           String?
-  notes              String?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+model GroupMember {
+  id         String      @id @default(cuid())
+  groupId    String
+  name       String
+  profileKey String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  group      Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  hosted     Hangout[]
+  responses  Response[]
 
-  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  @@unique([groupId, profileKey])
+  @@index([groupId])
+}
 
-  @@index([tripId])
+model Hangout {
+  id           String      @id @default(cuid())
+  groupId      String
+  hostMemberId String
+  title        String
+  startAt      DateTime
+  endAt        DateTime?
+  location     String?
+  details      String?
+  tags         String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  group        Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  hostMember   GroupMember @relation(fields: [hostMemberId], references: [id], onDelete: Cascade)
+  responses    Response[]
+
+  @@index([groupId, startAt])
+  @@index([hostMemberId])
+}
+
+model Response {
+  id        String      @id @default(cuid())
+  hangoutId String
+  memberId  String
+  status    String
+  note      String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  hangout   Hangout     @relation(fields: [hangoutId], references: [id], onDelete: Cascade)
+  member    GroupMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([hangoutId, memberId])
+  @@index([hangoutId])
+  @@index([memberId])
 }

@@ -1,76 +1,190 @@
-import Link from "next/link";
 import { db } from "@/lib/db";
-import { formatDateRange } from "@/lib/format";
-import { createTrip } from "./actions";
+import { getProfile } from "@/lib/profile";
+import { createGroup, joinGroup } from "./actions";
+import { GroupCalendar } from "./ui/group-calendar";
 
-export default async function HomePage() {
-  const trips = await db.trip.findMany({
-    orderBy: [{ startDate: "asc" }, { createdAt: "desc" }],
+export const dynamic = "force-dynamic";
+
+type HomePageProps = {
+  searchParams?: {
+    group?: string;
+    event?: string;
+    week?: string;
+  };
+};
+
+function startOfDay(date: Date) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function addDays(date: Date, amount: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
+}
+
+function parseWeekStart(week?: string) {
+  if (!week) {
+    return startOfDay(new Date());
+  }
+
+  const parsed = new Date(week);
+  if (Number.isNaN(parsed.getTime())) {
+    return startOfDay(new Date());
+  }
+
+  return startOfDay(parsed);
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const profile = await getProfile();
+
+  if (!profile.id) {
+    return <OnboardingView defaultName={profile.name ?? ""} />;
+  }
+
+  const memberships = await db.groupMember.findMany({
+    where: { profileKey: profile.id },
+    orderBy: { createdAt: "asc" },
     include: {
-      _count: { select: { reservations: true } },
+      group: {
+        include: {
+          members: {
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      },
     },
   });
 
+  if (memberships.length === 0) {
+    return <OnboardingView defaultName={profile.name ?? ""} />;
+  }
+
+  const requestedGroupId = searchParams?.group;
+  const activeGroupId =
+    memberships.find((membership) => membership.groupId === requestedGroupId)?.groupId ??
+    memberships.find((membership) => membership.groupId === profile.activeGroupId)?.groupId ??
+    memberships[0]?.groupId;
+
+  const activeMembership = memberships.find((membership) => membership.groupId === activeGroupId);
+
+  if (!activeMembership) {
+    return <OnboardingView defaultName={profile.name ?? ""} />;
+  }
+
+  const weekStart = parseWeekStart(searchParams?.week);
+  const weekEnd = addDays(weekStart, 7);
+
+  const activeGroup = await db.group.findUnique({
+    where: { id: activeMembership.groupId },
+    include: {
+      members: {
+        orderBy: { createdAt: "asc" },
+      },
+      hangouts: {
+        where: {
+          startAt: {
+            gte: weekStart,
+            lt: weekEnd,
+          },
+        },
+        orderBy: [{ startAt: "asc" }, { createdAt: "asc" }],
+        include: {
+          hostMember: true,
+          responses: {
+            include: {
+              member: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!activeGroup) {
+    return <OnboardingView defaultName={profile.name ?? ""} />;
+  }
+
   return (
-    <main>
-      <header>
-        <span className="badge">TripTrack</span>
-        <h1>All your travel confirmations, organized by trip.</h1>
-        <p>
-          Create a trip, then add flights, hotels, reservations, and anything else
-          you need to remember.
-        </p>
-      </header>
+    <GroupCalendar
+      activeGroup={{
+        id: activeGroup.id,
+        name: activeGroup.name,
+        inviteCode: activeGroup.inviteCode,
+        members: activeGroup.members,
+        hangouts: activeGroup.hangouts,
+      }}
+      currentProfileName={profile.name ?? ""}
+      groups={memberships.map((membership) => ({
+        id: membership.group.id,
+        name: membership.group.name,
+        inviteCode: membership.group.inviteCode,
+        memberCount: membership.group.members.length,
+      }))}
+      selectedEventId={searchParams?.event ?? null}
+      weekStart={weekStart.toISOString()}
+    />
+  );
+}
 
-      <div className="section-title">
-        <h2>New trip</h2>
-      </div>
-      <form className="form" action={createTrip}>
-        <div>
-          <label htmlFor="title">Trip title</label>
-          <input id="title" name="title" placeholder="Tokyo work sprint" required />
+function OnboardingView({ defaultName }: { defaultName: string }) {
+  return (
+    <main className="entry-shell">
+      <section className="entry-card">
+        <div className="entry-copy">
+          <span className="badge">YouDown</span>
+          <h1>Start by creating a group or joining one.</h1>
+          <p>
+            Every calendar in YouDown belongs to a group. Pick your name once, then
+            jump into a shared weekly calendar.
+          </p>
         </div>
-        <div>
-          <label htmlFor="destination">Destination</label>
-          <input id="destination" name="destination" placeholder="Tokyo, Japan" />
-        </div>
-        <div>
-          <label htmlFor="startDate">Start date</label>
-          <input id="startDate" name="startDate" type="date" />
-        </div>
-        <div>
-          <label htmlFor="endDate">End date</label>
-          <input id="endDate" name="endDate" type="date" />
-        </div>
-        <div className="span-2">
-          <label htmlFor="notes">Notes</label>
-          <textarea id="notes" name="notes" placeholder="Goals, reminders, links." />
-        </div>
-        <div>
-          <label>&nbsp;</label>
-          <button type="submit">Create trip</button>
-        </div>
-      </form>
 
-      <div className="section-title">
-        <h2>Upcoming trips</h2>
-      </div>
-      {trips.length === 0 ? (
-        <div className="empty">No trips yet. Create your first one above.</div>
-      ) : (
-        <div className="card-grid">
-          {trips.map((trip) => (
-            <Link key={trip.id} className="card" href={`/trips/${trip.id}`}>
-              <span className="badge">{trip.destination ?? "No destination"}</span>
-              <div>
-                <h3>{trip.title}</h3>
-                <p>{formatDateRange(trip.startDate, trip.endDate) || "Dates TBD"}</p>
-              </div>
-              <p>{trip._count.reservations} reservations</p>
-            </Link>
-          ))}
+        <div className="entry-actions">
+          <form className="entry-form" action={createGroup}>
+            <h2>Create group</h2>
+            <label htmlFor="profileNameCreate">Your name</label>
+            <input
+              id="profileNameCreate"
+              name="profileName"
+              placeholder="Your name"
+              defaultValue={defaultName}
+              required
+            />
+            <label htmlFor="groupName">Group name</label>
+            <input
+              id="groupName"
+              name="groupName"
+              placeholder="Friday crew"
+              required
+            />
+            <button type="submit">Create group</button>
+          </form>
+
+          <form className="entry-form" action={joinGroup}>
+            <h2>Join group</h2>
+            <label htmlFor="profileNameJoin">Your name</label>
+            <input
+              id="profileNameJoin"
+              name="profileName"
+              placeholder="Your name"
+              defaultValue={defaultName}
+              required
+            />
+            <label htmlFor="inviteCode">Invite code</label>
+            <input
+              id="inviteCode"
+              name="inviteCode"
+              placeholder="friday-crew-ab123"
+              required
+            />
+            <button type="submit">Join with code</button>
+          </form>
         </div>
-      )}
+      </section>
     </main>
   );
 }

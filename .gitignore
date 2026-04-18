@@ -7,4 +7,5 @@ node_modules
 .env.production.local
 prisma/dev.db
 prisma/dev.db-journal
+prisma/dev2.db
 .DS_Store

@@ -1224,6 +1224,7 @@ export type GroupCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * The data used to create many Groups.
    */
   data: Prisma.GroupCreateManyInput | Prisma.GroupCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1242,6 +1243,7 @@ export type GroupCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extension
    * The data used to create many Groups.
    */
   data: Prisma.GroupCreateManyInput | Prisma.GroupCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**

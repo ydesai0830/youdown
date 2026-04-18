@@ -14,10 +14,11 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@prisma/adapter-better-sqlite3": "^7.7.0",
+    "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "dotenv": "^17.4.2",
     "next": "14.2.5",
+    "pg": "^8.20.0",
     "react": "18.2.0",
     "react-dom": "18.2.0"
   },

@@ -604,6 +604,7 @@ export type HangoutCreateOrConnectWithoutGroupInput = {
 
 export type HangoutCreateManyGroupInputEnvelope = {
   data: Prisma.HangoutCreateManyGroupInput | Prisma.HangoutCreateManyGroupInput[]
+  skipDuplicates?: boolean
 }
 
 export type HangoutUpsertWithWhereUniqueWithoutGroupInput = {
@@ -674,6 +675,7 @@ export type HangoutCreateOrConnectWithoutHostMemberInput = {
 
 export type HangoutCreateManyHostMemberInputEnvelope = {
   data: Prisma.HangoutCreateManyHostMemberInput | Prisma.HangoutCreateManyHostMemberInput[]
+  skipDuplicates?: boolean
 }
 
 export type HangoutUpsertWithWhereUniqueWithoutHostMemberInput = {
@@ -1673,6 +1675,7 @@ export type HangoutCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * The data used to create many Hangouts.
    */
   data: Prisma.HangoutCreateManyInput | Prisma.HangoutCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1691,6 +1694,7 @@ export type HangoutCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensi
    * The data used to create many Hangouts.
    */
   data: Prisma.HangoutCreateManyInput | Prisma.HangoutCreateManyInput[]
+  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

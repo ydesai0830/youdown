@@ -40,5 +40,5 @@ This script:
 Create `.env` with:
 
 ```bash
-DATABASE_URL="file:./prisma/dev.db"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
 ```
